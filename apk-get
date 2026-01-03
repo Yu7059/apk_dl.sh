@@ -84,11 +84,11 @@ app_url=${urls[$index]}
 app_title=${titles[$index]}
 slug=$(grep -Po '(?<=https://)[^.]+' <<< $app_url) # Extract app-uri
 echo -e "Selected: $app_title"
-echo DEBUG: $app_url/dw
 
 # Scrape file path by visiting the "downloads" page.
 echo -e -n " - Loading download page..    "
-src=$(curl -L --compressed "$app_url/dw" 2>/dev/null)
+#echo;echo DEBUG: curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$app_url/dw"
+src=$(curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$app_url/dw" 2>/dev/null)
 grep '404 Not Found' <<< "$src" >/dev/null && echo -e "\n\nERROR: Couldn't load download page, we might be blocked." && exit 1
 echo OK
 
