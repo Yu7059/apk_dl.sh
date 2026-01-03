@@ -87,28 +87,42 @@ echo -e "Selected: $app_title"
 
 # Scrape file path by visiting the "downloads" page.
 echo -e -n " - Loading download page..    "
-#echo;echo DEBUG: curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$app_url/dw"
+#DEBUG: echo;echo DEBUG: curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$app_url/dw"
 src=$(curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$app_url/dw" 2>/dev/null)
 grep '404 Not Found' <<< "$src" >/dev/null && echo -e "\n\nERROR: Couldn't load download page, we might be blocked." && exit 1
 echo OK
 
+
 version=$(grep -Po '<div class="version">\K[^<]+' <<< "$src"  | sed 's/\./-/g')
 hash=$(grep -Po 'data-url="\K[^"]+(?="\s+data-download)' <<< "$src" )
 [[ -z "$version" || -z "$hash" ]] && echo -e "\n\nERROR: Couldn't parse file url." && exit 1
-
 file_url="https://dw.uptodown.net/dwn/$hash$slug-$version.apk"
 
+grep 'class="button variants"' <<< "$src" && {
+    echo -n " - XAPK Detected, loading variant page...    "
+    file_id=$(grep -m1 -Po 'data-file-id="\K\d+(?=")' <<< "$src") || { echo -e "\n\nERROR: Couldn't parse data-file-id."; exit 1; }
+    variant_url="https://lmr-loyalty-free-music.en.uptodown.com/android/download/$file_id-x"
+    src2=$(curl -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0' -L --compressed "$variant_url")
+    hash=$(grep -Po 'data-url="\K[^"]+(?="\s+data-download)' <<< "$src2" )
+    [[ -z "$hash" ]] && echo -e "\n\nERROR: Couldn't parse file hash." && exit 1
+    echo OK
+    file_url="https://dw.uptodown.net/dwn/$hash$slug-$version.xapk"
+    x="x";X="X"
+}
+
+#DEBUG: echo VARIANT: $variant_url;echo FILE_URL: $file_url;echo HASH: $hash;echo VERSION: $version;exit 0
+
 # Download the file.
-echo " - Downloading the APK"
-wget -O "$app.apk" -q --show-progress "$file_url"
+echo " - Downloading the $XAPK"
+wget -O "$app.$xapk" -q --show-progress "$file_url"
 
 # Install the apk.
-if ($is_yes || (read -p "Do you want to install the apk? (y/n): " yn && [[ $yn == y ]])); then
+if ($is_yes || (read -p "Do you want to install the $xapk? (y/n): " yn && [[ $yn == y ]])); then
     if which su &>/dev/null;then
         su -c pm install "$app.apk" 2>/dev/null && exit 0
     fi
     if which termux-open &>/dev/null;then
         termux-open "$app.apk" && exit 0
     fi
-    echo "Couldn't install the APK. Make sure that you have \"termux-tools\" installed or you have root."; exit 1
+    echo "Couldn't install the $XAPK. Make sure that you have \"termux-tools\" installed or you have root."; exit 1
 fi
