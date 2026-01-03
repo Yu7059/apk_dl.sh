@@ -1,7 +1,7 @@
 #!/bin/bash
 # Cli tool to download & Install apks from UpToDown, by KebabLord.
-# VERSION: 2.0
-# DEPENDS: wget, curl, awk, grep
+# VERSION: 3.0
+# DEPENDS: curl, awk, grep
 
 # Set default values
 is_list=false
@@ -114,15 +114,18 @@ grep 'class="button variants"' <<< "$src" && {
 
 # Download the file.
 echo " - Downloading the ${X}APK"
-wget -O "$app.${x}apk" -q --show-progress "$file_url"
+curl -L --progress-bar -o "$app.${x}apk" "$file_url"
 
 [[ -n "$x" ]] && exit 0 # Exit early as we can't install XAPK files for now.
 
 # Install the apk.
 if ($is_yes || (read -p "Do you want to install the apk? (y/n): " yn && [[ $yn == y ]])); then
-    if which su &>/dev/null;then
-        su -c pm install "$app.apk" 2>/dev/null && exit 0
+
+    if su -c true &>/dev/null;then
+      sudo="su -c"
     fi
+    $sudo pm install "$app.apk" 2>/dev/null && exit 0
+
     if which termux-open &>/dev/null;then
         termux-open "$app.apk" && exit 0
     fi
